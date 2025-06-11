@@ -1,53 +1,17 @@
 # app.py
-from utils.auth import init_user_db, login_form, register_form
+from utils.auth import init_user_db, check_user, login_form, register_form
 import streamlit as st
-from datetime import datetime
+import sqlite3
 import pandas as pd
+from datetime import datetime
 import matplotlib.pyplot as plt
 from streamlit_autorefresh import st_autorefresh
 
-# --- Настройка ---
-COLUMNS = ["Дата"] + [
-    "Пользователи",
-    "Водители",
-    "Выполнено",
-    "Отмененные",
-    "Исполнитель не найден",
-    "В работе",
-]
-
-# --- Автообновление данных ---
-st_autorefresh(interval=5 * 1000, key="data_refresh")
-
-# --- Подключение к данным ---
-def load_data():
-    conn = sqlite3.connect("../monitoring.db")
-    try:
-        df = pd.read_sql_query(
-            "SELECT дата, пользователи, водители, выполнено, отмененные, исполнитель_не_найден, в_работе FROM records ORDER BY дата DESC",
-            conn
-        )
-        df.columns = COLUMNS
-    except Exception as e:
-        st.warning(f"⚠️ Ошибка загрузки данных: {e}")
-        df = pd.DataFrame(columns=COLUMNS)
-    finally:
-        conn.close()
-    return df
-
-def save_data(values):
-    conn = sqlite3.connect("../monitoring.db")
-    cursor = conn.cursor()
-    cursor.execute("""
-    INSERT INTO records (дата, пользователи, водители, выполнено, отмененные, исполнитель_не_найден, в_работе)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, values)
-    conn.commit()
-    conn.close()
-    st.cache_data.clear()
+# --- Настройка базы данных ---
+DB_FILE = "monitoring.db"
 
 def init_data_db():
-    conn = sqlite3.connect("../monitoring.db")
+    conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute(f"""
     CREATE TABLE IF NOT EXISTS records (
@@ -64,18 +28,57 @@ def init_data_db():
     conn.commit()
     conn.close()
 
+def load_data():
+    conn = sqlite3.connect(DB_FILE)
+    try:
+        df = pd.read_sql_query(
+            "SELECT дата, пользователи, водители, выполнено, отмененные, исполнитель_не_найден, в_работе FROM records ORDER BY дата DESC",
+            conn
+        )
+        df.columns = ["Дата", "Пользователи", "Водители", "Выполнено", "Отмененные", "Исполнитель не найден", "В работе"]
+    except Exception as e:
+        st.warning(f"⚠️ Ошибка загрузки данных: {e}")
+        df = pd.DataFrame(columns=COLUMNS)
+
+    conn.close()
+    return df
+
+def save_data(values):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("""
+    INSERT INTO records (дата, пользователи, водители, выполнено, отмененные, исполнитель_не_найден, в_работе)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, values)
+    conn.commit()
+    conn.close()
+    st.cache_data.clear()
+    st.rerun()
+
+# --- Конфигурация ---
+COLUMNS = ["Дата"] + [
+    "Пользователи",
+    "Водители",
+    "Выполнено",
+    "Отмененные",
+    "Исполнитель не найден",
+    "В работе",
+]
+
 # --- Streamlit конфигурация ---
 st.set_page_config(page_title="Мониторинг пользователей", layout="wide")
 st.title("📊 Мониторинг пользователей и водителей")
 
-# --- Инициализация базы ---
+# --- Автообновление ---
+st_autorefresh(interval=5 * 1000, key="data_refresh")
+
+# --- Инициализация БД ---
 init_user_db()
 init_data_db()
 
 # --- Форма входа ---
 if "logged_in" not in st.session_state:
     choice = st.sidebar.selectbox("Выберите действие", ["Вход", "Регистрация"])
-
     if choice == "Вход":
         login_form()
     elif choice == "Регистрация":
@@ -89,10 +92,9 @@ else:
         del st.session_state["role"]
         st.rerun()
 
-    # --- Боковое меню (разные кнопки для ролей) ---
+    # --- Боковое меню (разные кнопки по ролям) ---
     role = st.session_state.get("role", "Пользователь")
     st.sidebar.title("📌 Навигация")
-
     show_add = st.sidebar.button("➕ Добавить данные") if role == "Технический специалист" else False
     show_history = st.sidebar.button("📜 История записей")
     show_graphs = st.sidebar.button("📈 Графики")
@@ -103,7 +105,9 @@ else:
     if 'current_page' not in st.session_state:
         st.session_state.current_page = "История записей"
 
-    if show_history:
+    if show_add:
+        st.session_state.current_page = "Добавить данные"
+    elif show_history:
         st.session_state.current_page = "История записей"
     elif show_graphs:
         st.session_state.current_page = "Графики"
@@ -111,13 +115,10 @@ else:
         st.session_state.current_page = "Поиск"
     elif show_instructions:
         st.session_state.current_page = "Инструкции"
-    elif show_add:
-        st.session_state.current_page = "Добавить данные"
 
-    # --- Загрузка данных ---
     df = load_data()
 
-    # --- Вкладка: Добавить данные (только для технического специалиста) ---
+    # --- Вкладка: Добавить данные ---
     if st.session_state.current_page == "Добавить данные" and role == "Технический специалист":
         st.header("➕ Добавить новую запись")
 
@@ -140,8 +141,6 @@ else:
                     users, drivers, done, canceled, not_found, in_progress
                 )
                 save_data(values)
-                st.success("Запись успешно добавлена!")
-                st.rerun()
 
                 # Очистка полей
                 del st.session_state["users_input"]
