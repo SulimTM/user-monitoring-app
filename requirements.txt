@@ -1,7 +1,8 @@
-streamlit-aggrid
-streamlit-autorefresh
 streamlit
 pandas
 matplotlib
+sqlite3
 streamlit-autorefresh
-openpyxl
+gspread
+gspread-dataframe
+oauth2client
