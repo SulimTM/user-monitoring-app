@@ -77,8 +77,13 @@ if menu == "Добавить данные":
         df = add_data(df, values)
         save_data(df)
         st.success("Запись успешно добавлена!")
-        st.experimental_rerun()
-
+         # Сброс значений (с помощью session_state)
+        st.session_state["users_input"] = 0
+        st.session_state["drivers_input"] = 0
+        st.session_state["done_input"] = 0
+        st.session_state["canceled_input"] = 0
+        st.session_state["not_found_input"] = 0
+        st.session_state["in_progress_input"] = 0
 # --- Вкладка: История записей ---
 elif menu == "История записей":
     st.header("📜 История ввода")
