@@ -3,7 +3,7 @@ import sqlite3
 import pandas as pd
 from datetime import datetime
 import matplotlib.pyplot as plt
-from streamlit_autorefresh import st_autorefresh  # <<< для автообновления
+from streamlit_autorefresh import st_autorefresh  # Для автообновления
 
 # --- Настройка базы данных ---
 DB_FILE = "monitoring.db"
@@ -53,7 +53,6 @@ def save_data(values):
     """, values)
     conn.commit()
     conn.close()
-    st.experimental_rerun()  # <<< Перезапуск для обновления данных
 
 # --- Конфигурация ---
 COLUMNS = ["Дата"] + [
@@ -69,7 +68,7 @@ COLUMNS = ["Дата"] + [
 st.set_page_config(page_title="Мониторинг пользователей", layout="wide")
 st.title("📊 Мониторинг пользователей и водителей")
 
-# --- Автообновление данных (реальное время) ---
+# --- Автообновление каждые 10 секунд ---
 st_autorefresh(interval=10 * 1000, key="data_refresh")
 
 # Инициализируем БД
@@ -98,7 +97,7 @@ elif show_search:
 elif show_instructions:
     st.session_state.current_page = "Инструкции"
 
-# --- Получение данных без кэширования ---
+# --- Получение данных ---
 def get_data():
     return load_data()
 
@@ -128,6 +127,9 @@ if st.session_state.current_page == "Добавить данные":
             )
             save_data(values)
             st.success("Запись успешно добавлена!")
+
+            # <<< Перезагружаем страницу для обновления >>>
+            st.rerun()  # или st.experimental_rerun(), если у вас старая версия Streamlit
 
             # Очистка полей
             del st.session_state["users_input"]
