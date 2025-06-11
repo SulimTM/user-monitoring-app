@@ -33,15 +33,12 @@ def load_data():
             "SELECT дата, пользователи, водители, выполнено, отмененные, исполнитель_не_найден, в_работе FROM records ORDER BY дата DESC",
             conn
         )
+        df.columns = ["Дата", "Пользователи", "Водители", "Выполнено", "Отмененные", "Исполнитель не найден", "В работе"]
     except Exception as e:
         st.error(f"❌ Ошибка загрузки данных: {e}")
         df = pd.DataFrame(columns=COLUMNS)
     finally:
         conn.close()
-
-    if df.empty:
-        df = pd.DataFrame(columns=COLUMNS)
-
     return df
 
 def save_data(values):
@@ -98,10 +95,7 @@ elif show_instructions:
     st.session_state.current_page = "Инструкции"
 
 # --- Получение данных ---
-def get_data():
-    return load_data()
-
-df = get_data()
+df = load_data()
 
 # --- Вкладка: Добавить данные ---
 if st.session_state.current_page == "Добавить данные":
@@ -127,46 +121,43 @@ if st.session_state.current_page == "Добавить данные":
             )
             save_data(values)
             st.success("Запись успешно добавлена!")
-
-            # <<< Перезагружаем страницу для обновления >>>
-            st.rerun()  # или st.experimental_rerun(), если у вас старая версия Streamlit
-
-            # Очистка полей
-            del st.session_state["users_input"]
-            del st.session_state["drivers_input"]
-            del st.session_state["done_input"]
-            del st.session_state["canceled_input"]
-            del st.session_state["not_found_input"]
-            del st.session_state["in_progress_input"]
+            st.rerun()  # Обновляем страницу после добавления
 
     # --- Чекбокс: показать последние записи за день ---
     show_last_records = st.checkbox("📜 Показывать последние записи за день")
 
     if show_last_records:
-        today = datetime.now().strftime("%d.%m.%y")
         df_today = df.copy()
-        df_today['Дата_дата'] = pd.to_datetime(df_today['Дата'], format='mixed', dayfirst=True).dt.strftime('%d.%m.%y')
-        today_df = df_today[df_today['Дата_дата'] == today].drop(columns=['Дата_дата'])
 
-        if not today_df.empty:
-            st.subheader("📌 Последние записи за сегодня:")
-            st.dataframe(today_df.style.highlight_max(axis=0), use_container_width=True)
+        if df_today.empty:
+            st.info("❌ Нет данных для отображения")
+        elif 'Дата' not in df_today.columns:
+            st.error("❌ Столбец 'Дата' отсутствует в данных")
         else:
-            st.info("❌ Сегодня записей ещё нет.")
+            today = datetime.now().strftime("%d.%m.%y")
+            df_today['Дата_дата'] = pd.to_datetime(df_today['Дата'], format='mixed', dayfirst=True).dt.strftime('%d.%m.%y')
+            today_df = df_today[df_today['Дата_дата'] == today].drop(columns=['Дата_дата'])
+
+            if not today_df.empty:
+                st.subheader("📌 Последние записи за сегодня:")
+                st.dataframe(today_df.style.highlight_max(axis=0), use_container_width=True)
+            else:
+                st.info("❌ Сегодня записей ещё нет.")
 
 # --- Вкладка: История записей ---
 elif st.session_state.current_page == "История записей":
     st.header("📜 История ввода")
-    if not df.empty:
+    if not df.empty and 'Дата' in df.columns:
         st.dataframe(df.style.highlight_max(axis=0), use_container_width=True)
     else:
-        st.warning("❌ Нет данных для отображения.")
+        st.warning("❌ Нет данных для отображения или структура повреждена")
 
 # --- Вкладка: Графики ---
 elif st.session_state.current_page == "Графики":
     st.header("📈 Графики по категориям")
     category = st.selectbox("Выберите категорию", COLUMNS[1:])
-    if not df.empty:
+    
+    if not df.empty and 'Дата' in df.columns:
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.plot(df["Дата"], df[category], marker='o', linestyle='-')
         plt.xticks(rotation=45)
@@ -225,9 +216,6 @@ elif st.session_state.current_page == "Инструкции":
 ### 💡 Советы:
 - Чтобы увидеть только сегодняшние записи — используйте чекбокс **📜 Показывать последние записи за день**
 - При работе на сервере SQLite работает быстрее и надёжнее CSV
-
----
-© Ваше приложение "Мониторинг пользователей"
     """)
 
 else:
