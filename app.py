@@ -77,7 +77,7 @@ if menu == "Добавить данные":
         df = add_data(df, values)
         save_data(df)
         st.success("Запись успешно добавлена!")
-         st.experimental_rerun()
+        st.experimental_rerun()
 
 # --- Вкладка: История записей ---
 elif menu == "История записей":
