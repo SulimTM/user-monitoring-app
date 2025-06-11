@@ -20,7 +20,7 @@ COLUMNS = ["Дата"] + [
 ]
 
 # --- Загрузка данных (с кэшированием) ---
-@st.cache_data(ttl=60)  # Кэш на 60 секунд
+@st.cache_data(ttl=60)
 def load_data():
     if os.path.exists(CSV_FILE):
         try:
@@ -133,13 +133,6 @@ if st.session_state.current_page == "Добавить данные":
 # --- Вкладка: История записей ---
 elif st.session_state.current_page == "История записей":
     st.header("📜 История ввода")
-    
-    # Кнопка обновления данных
-    refresh = st.button("🔄 Обновить данные")
-    if refresh:
-        st.cache_data.clear()  # Очистка кэша вручную
-        st.rerun()
-
     df = load_data()
     if not df.empty:
         st.dataframe(df.style.highlight_max(axis=0), use_container_width=True)
@@ -149,12 +142,6 @@ elif st.session_state.current_page == "История записей":
 # --- Вкладка: Графики ---
 elif st.session_state.current_page == "Графики":
     st.header("📈 Графики по категориям")
-    
-    refresh = st.button("🔄 Обновить график")
-    if refresh:
-        st.cache_data.clear()
-        st.rerun()
-
     category = st.selectbox("Выберите категорию", COLUMNS[1:])
     df = load_data()
 
