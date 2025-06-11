@@ -20,14 +20,9 @@ COLUMNS = ["Дата"] + [
 def load_data():
     if os.path.exists(CSV_FILE):
         try:
-            return pd.read_csv(CSV_FILE, encoding="utf-8-sig", on_bad_lines='skip')  # ✅ Поддержка кириллицы и пропуск ошибок
-        except pd.errors.ParserError as e:
-            st.error(f"❌ Ошибка парсинга CSV: {e}. Создан новый файл.")
-            df = pd.DataFrame(columns=COLUMNS)
-            df.to_csv(CSV_FILE, index=False)
-            return df
+            return pd.read_csv(CSV_FILE, encoding="utf-8-sig", on_bad_lines='skip')
         except Exception as e:
-            st.error(f"❌ Неизвестная ошибка при загрузке данных: {e}")
+            st.error(f"❌ Ошибка загрузки данных: {e}. Создан новый файл.")
             df = pd.DataFrame(columns=COLUMNS)
             df.to_csv(CSV_FILE, index=False)
             return df
@@ -160,9 +155,10 @@ if st.session_state.current_page == "Добавить данные":
             selected_row = show_selectable_table(today_df, key="today_table")
             if len(selected_row) > 0:
                 if isinstance(selected_row, list):
-                    row_data = pd.Series(selected_row[0])
+                    row_data = selected_row[0]  # Работаем напрямую с dict
                 else:
-                    row_data = selected_row.iloc[0]
+                    row_data = selected_row.iloc[0].to_dict()  # Преобразуем Series в словарь
+
                 copied_text = ' | '.join(f"{k}: {v}" for k, v in row_data.items())
                 st.code(copied_text)
                 st.info("✔️ Строка скопирована в буфер обмена!")
@@ -177,9 +173,10 @@ elif st.session_state.current_page == "История записей":
         selected_row = show_selectable_table(df, key="history_table")
         if len(selected_row) > 0:
             if isinstance(selected_row, list):
-                row_data = pd.Series(selected_row[0])
+                row_data = selected_row[0]
             else:
-                row_data = selected_row.iloc[0]
+                row_data = selected_row.iloc[0].to_dict()
+
             copied_text = ' | '.join(f"{k}: {v}" for k, v in row_data.items())
             st.code(copied_text)
             st.info("✔️ Строка скопирована в буфер обмена!")
@@ -211,9 +208,10 @@ elif st.session_state.current_page == "Поиск":
                 selected_row = show_selectable_table(results, key="search_table")
                 if len(selected_row) > 0:
                     if isinstance(selected_row, list):
-                        row_data = pd.Series(selected_row[0])
+                        row_data = selected_row[0]
                     else:
-                        row_data = selected_row.iloc[0]
+                        row_data = selected_row.iloc[0].to_dict()
+
                     copied_text = ' | '.join(f"{k}: {v}" for k, v in row_data.items())
                     st.code(copied_text)
                     st.info("✔️ Строка скопирована в буфер обмена!")
