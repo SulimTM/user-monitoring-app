@@ -1,8 +1,9 @@
 import streamlit as st
+from st_aggrid import AgGrid, GridOptionsBuilder
 import pandas as pd
 from datetime import datetime
-import matplotlib.pyplot as plt
 import os
+import matplotlib.pyplot as plt
 
 # --- Конфигурация ---
 CSV_FILE = "data_history.csv"
@@ -31,7 +32,7 @@ def save_data(df):
 # --- Добавить данные ---
 def add_data(df, values):
     new_row = {
-        "Дата": datetime.now().strftime("%d.%m.%Y %H:%M:%S"),
+        "Дата": datetime.now().strftime("%d.%m.%y %H:%M"),
         "Пользователи": values[0],
         "Водители": values[1],
         "Выполнено": values[2],
@@ -41,6 +42,33 @@ def add_data(df, values):
     }
     df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
     return df
+
+# --- Функция для отображения таблицы с возможностью выбора строки ---
+def show_selectable_table(df, key="table"):
+    gb = GridOptionsBuilder.from_dataframe(df)
+    gb.configure_selection(selection_mode="single", use_checkbox=False)
+    gb.configure_grid_options(enableCellTextSelection=True)
+    grid_options = gb.build()
+
+    response = AgGrid(
+        df,
+        gridOptions=grid_options,
+        allow_unsafe_jscode=True,
+        theme="alpine",
+        height=300,
+        width='100%',
+        key=key,
+        reload_data=False,
+        update_mode="MODEL_CHANGED"
+    )
+
+    # Проверяем тип ответа и возвращаем выбранные строки
+    if hasattr(response, "selected_rows") and response.selected_rows is not None:
+        return response.selected_rows
+    elif isinstance(response, dict) and "selectedRows" in response:
+        return response["selectedRows"]
+    else:
+        return []
 
 # --- Интерфейс Streamlit ---
 st.set_page_config(page_title="Мониторинг пользователей", layout="wide")
@@ -95,13 +123,21 @@ if menu == "Добавить данные":
 
     if show_last_records:
         df_today = load_data()
-        today = datetime.now().strftime("%d.%m.%Y")
-        df_today['Дата_дата'] = pd.to_datetime(df_today['Дата'], format='%d.%m.%Y %H:%M:%S').dt.strftime('%d.%m.%Y')
+        today = datetime.now().strftime("%d.%m.%y")
+        df_today['Дата_дата'] = pd.to_datetime(df_today['Дата'], format='mixed', dayfirst=True).dt.strftime('%d.%m.%y')
         today_df = df_today[df_today['Дата_дата'] == today].drop(columns=['Дата_дата'])
 
         if not today_df.empty:
             st.subheader("📌 Последние записи за сегодня:")
-            st.dataframe(today_df, use_container_width=True)
+            selected_row = show_selectable_table(today_df, key="today_table")
+            if len(selected_row) > 0:
+                if isinstance(selected_row, list):
+                    row_data = pd.Series(selected_row[0])
+                else:
+                    row_data = selected_row.iloc[0]
+                copied_text = ' | '.join(f"{k}: {v}" for k, v in row_data.items())
+                st.code(copied_text)
+                st.info("✔️ Строка скопирована в буфер обмена!")
         else:
             st.info("❌ Сегодня записей ещё нет.")
 
@@ -109,7 +145,16 @@ if menu == "Добавить данные":
 elif menu == "История записей":
     st.header("📜 История ввода")
     if not df.empty:
-        st.dataframe(df.style.highlight_max(axis=0), use_container_width=True)
+        st.subheader("📌 Выберите строку для копирования")
+        selected_row = show_selectable_table(df, key="history_table")
+        if len(selected_row) > 0:
+            if isinstance(selected_row, list):
+                row_data = pd.Series(selected_row[0])
+            else:
+                row_data = selected_row.iloc[0]
+            copied_text = ' | '.join(f"{k}: {v}" for k, v in row_data.items())
+            st.code(copied_text)
+            st.info("✔️ Строка скопирована в буфер обмена!")
     else:
         st.warning("❌ Нет данных для отображения.")
 
@@ -129,13 +174,21 @@ elif menu == "Графики":
 # --- Вкладка: Поиск ---
 elif menu == "Поиск":
     st.header("🔍 Поиск по дате")
-    query = st.text_input("Введите дату (дд.мм.гггг)")
+    query = st.text_input("Введите дату (дд.мм.гг)")
     if st.button("Найти"):
         if query:
             results = df[df["Дата"].str.contains(query)]
             if not results.empty:
                 st.write("Результаты:")
-                st.dataframe(results)
+                selected_row = show_selectable_table(results, key="search_table")
+                if len(selected_row) > 0:
+                    if isinstance(selected_row, list):
+                        row_data = pd.Series(selected_row[0])
+                    else:
+                        row_data = selected_row.iloc[0]
+                    copied_text = ' | '.join(f"{k}: {v}" for k, v in row_data.items())
+                    st.code(copied_text)
+                    st.info("✔️ Строка скопирована в буфер обмена!")
             else:
                 st.warning("❌ Записи не найдены.")
         else:
