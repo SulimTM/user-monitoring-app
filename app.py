@@ -82,13 +82,13 @@ if menu == "Добавить данные":
             save_data(df)
             st.success("Запись успешно добавлена!")
 
-            # Сбрасываем значения полей (через точечную нотацию)
-            st.session_state.users_input = 0
-            st.session_state.drivers_input = 0
-            st.session_state.done_input = 0
-            st.session_state.canceled_input = 0
-            st.session_state.not_found_input = 0
-            st.session_state.in_progress_input = 0
+            # Удаляем значения из session_state, чтобы поля обновились
+            del st.session_state["users_input"]
+            del st.session_state["drivers_input"]
+            del st.session_state["done_input"]
+            del st.session_state["canceled_input"]
+            del st.session_state["not_found_input"]
+            del st.session_state["in_progress_input"]
 
     # --- Чекбокс: показать последние записи за день ---
     show_last_records = st.checkbox("📜 Показывать последние записи за день")
