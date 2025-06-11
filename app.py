@@ -90,6 +90,21 @@ if menu == "Добавить данные":
             st.session_state["not_found_input"] = 0
             st.session_state["in_progress_input"] = 0
 
+    # --- Чекбокс: показать последние записи за день ---
+    show_last_records = st.checkbox("📜 Показывать последние записи за день")
+
+    if show_last_records:
+        df_today = load_data()
+        today = datetime.now().strftime("%d.%m.%Y")
+        df_today['Дата_дата'] = pd.to_datetime(df_today['Дата'], format='%d.%m.%Y %H:%M:%S').dt.strftime('%d.%m.%Y')
+        today_df = df_today[df_today['Дата_дата'] == today].drop(columns=['Дата_дата'])
+
+        if not today_df.empty:
+            st.subheader("📌 Последние записи за сегодня:")
+            st.dataframe(today_df, use_container_width=True)
+        else:
+            st.info("❌ Сегодня записей ещё нет.")
+
 # --- Вкладка: История записей ---
 elif menu == "История записей":
     st.header("📜 История ввода")
