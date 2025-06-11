@@ -61,29 +61,35 @@ else:
 # --- Вкладка: Добавить данные ---
 if menu == "Добавить данные":
     st.header("➕ Добавить новую запись")
-    col1, col2 = st.columns(2)
-    with col1:
-        users = st.number_input("Пользователи", min_value=0, step=1)
-        drivers = st.number_input("Водители", min_value=0, step=1)
-        done = st.number_input("Выполнено", min_value=0, step=1)
-    with col2:
-        canceled = st.number_input("Отмененные", min_value=0, step=1)
-        not_found = st.number_input("Исполнитель не найден", min_value=0, step=1)
-        in_progress = st.number_input("В работе", min_value=0, step=1)
 
-    if st.button("✅ Добавить"):
-        values = [users, drivers, done, canceled, not_found, in_progress]
-        df = load_data()
-        df = add_data(df, values)
-        save_data(df)
-        st.success("Запись успешно добавлена!")
-         # Сброс значений (с помощью session_state)
-        st.session_state["users_input"] = 0
-        st.session_state["drivers_input"] = 0
-        st.session_state["done_input"] = 0
-        st.session_state["canceled_input"] = 0
-        st.session_state["not_found_input"] = 0
-        st.session_state["in_progress_input"] = 0
+    with st.form("add_data_form"):
+        col1, col2 = st.columns(2)
+        with col1:
+            users = st.number_input("Пользователи", min_value=0, step=1, key="users_input")
+            drivers = st.number_input("Водители", min_value=0, step=1, key="drivers_input")
+            done = st.number_input("Выполнено", min_value=0, step=1, key="done_input")
+        with col2:
+            canceled = st.number_input("Отмененные", min_value=0, step=1, key="canceled_input")
+            not_found = st.number_input("Исполнитель не найден", min_value=0, step=1, key="not_found_input")
+            in_progress = st.number_input("В работе", min_value=0, step=1, key="in_progress_input")
+
+        submitted = st.form_submit_button("✅ Добавить")
+
+        if submitted:
+            values = [users, drivers, done, canceled, not_found, in_progress]
+            df = load_data()
+            df = add_data(df, values)
+            save_data(df)
+            st.success("Запись успешно добавлена!")
+
+            # Сбрасываем значения полей
+            st.session_state["users_input"] = 0
+            st.session_state["drivers_input"] = 0
+            st.session_state["done_input"] = 0
+            st.session_state["canceled_input"] = 0
+            st.session_state["not_found_input"] = 0
+            st.session_state["in_progress_input"] = 0
+
 # --- Вкладка: История записей ---
 elif menu == "История записей":
     st.header("📜 История ввода")
@@ -119,34 +125,3 @@ elif menu == "Поиск":
                 st.warning("❌ Записи не найдены.")
         else:
             st.warning("❗ Введите дату для поиска.")
-
-# --- Импорт/экспорт ---
-st.sidebar.markdown("### 📥 Импорт / 📤 Экспорт")
-export_col, import_col = st.sidebar.columns(2)
-with export_col:
-    if st.button("📤 Экспортировать CSV"):
-        df.to_csv("data_export.csv", index=False)
-        st.sidebar.success("✅ Экспортировано как 'data_export.csv'")
-        with open("data_export.csv", "rb") as f:
-            st.sidebar.download_button("⬇️ Скачать CSV", f.read(), file_name="data_export.csv")
-
-with import_col:
-    uploaded_file = st.sidebar.file_uploader("📁 Импортировать", type=["csv", "xlsx"])
-    if uploaded_file:
-        try:
-            if uploaded_file.name.endswith(".csv"):
-                new_df = pd.read_csv(uploaded_file)
-            elif uploaded_file.name.endswith(".xlsx"):
-                new_df = pd.read_excel(uploaded_file)
-            if list(new_df.columns) != COLUMNS:
-                st.sidebar.error("❌ Неправильная структура файла.")
-            else:
-                new_df.to_csv(CSV_FILE, index=False)
-                st.sidebar.success("✅ Данные импортированы!")
-        except Exception as e:
-            st.sidebar.error(f"Ошибка: {e}")
-
-# --- Отображение сырых данных ---
-if st.checkbox("📂 Показать сырые данные"):
-    st.subheader("Raw Data")
-    st.write(df)
