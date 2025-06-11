@@ -3,6 +3,7 @@ import sqlite3
 import pandas as pd
 from datetime import datetime
 import matplotlib.pyplot as plt
+from streamlit_autorefresh import st_autorefresh  # <<< для автообновления
 
 # --- Настройка базы данных ---
 DB_FILE = "monitoring.db"
@@ -27,8 +28,20 @@ def init_db():
 
 def load_data():
     conn = sqlite3.connect(DB_FILE)
-    df = pd.read_sql_query("SELECT дата, пользователи, водители, выполнено, отмененные, исполнитель_не_найден, в_работе FROM records ORDER BY дата DESC", conn)
-    conn.close()
+    try:
+        df = pd.read_sql_query(
+            "SELECT дата, пользователи, водители, выполнено, отмененные, исполнитель_не_найден, в_работе FROM records ORDER BY дата DESC",
+            conn
+        )
+    except Exception as e:
+        st.error(f"❌ Ошибка загрузки данных: {e}")
+        df = pd.DataFrame(columns=COLUMNS)
+    finally:
+        conn.close()
+
+    if df.empty:
+        df = pd.DataFrame(columns=COLUMNS)
+
     return df
 
 def save_data(values):
@@ -40,7 +53,7 @@ def save_data(values):
     """, values)
     conn.commit()
     conn.close()
-    st.cache_data.clear()  # Очистка кэша после добавления
+    st.experimental_rerun()  # <<< Перезапуск для обновления данных
 
 # --- Конфигурация ---
 COLUMNS = ["Дата"] + [
@@ -55,6 +68,9 @@ COLUMNS = ["Дата"] + [
 # --- Streamlit конфигурация ---
 st.set_page_config(page_title="Мониторинг пользователей", layout="wide")
 st.title("📊 Мониторинг пользователей и водителей")
+
+# --- Автообновление данных (реальное время) ---
+st_autorefresh(interval=10 * 1000, key="data_refresh")
 
 # Инициализируем БД
 init_db()
@@ -82,8 +98,7 @@ elif show_search:
 elif show_instructions:
     st.session_state.current_page = "Инструкции"
 
-# --- Кэшированный доступ к данным ---
-@st.cache_data(ttl=5)  # Обновляем каждые 5 секунд
+# --- Получение данных без кэширования ---
 def get_data():
     return load_data()
 
@@ -213,6 +228,5 @@ elif st.session_state.current_page == "Инструкции":
 © Ваше приложение "Мониторинг пользователей"
     """)
 
-# --- Автообновление через кэширование ---
 else:
     st.warning("⚠️ Неизвестная страница")
