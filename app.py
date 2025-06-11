@@ -1,9 +1,12 @@
 import streamlit as st
-from st_aggrid import AgGrid, GridOptionsBuilder
+from streamlit_autorefresh import st_autorefresh
 import pandas as pd
 from datetime import datetime
 import os
 import matplotlib.pyplot as plt
+
+# --- Автообновление каждые 10 секунд ---
+st_autorefresh(interval=10 * 1000, key="data_refresh")
 
 # --- Конфигурация ---
 CSV_FILE = "data_history.csv"
@@ -20,9 +23,19 @@ COLUMNS = ["Дата"] + [
 def load_data():
     if os.path.exists(CSV_FILE):
         try:
-            return pd.read_csv(CSV_FILE, encoding="utf-8-sig", on_bad_lines='skip')
+            df = pd.read_csv(CSV_FILE, encoding="utf-8-sig", on_bad_lines='skip')
+            if list(df.columns) != COLUMNS:
+                st.warning("⚠️ Структура CSV повреждена. Создаём новый файл.")
+                df = pd.DataFrame(columns=COLUMNS)
+                df.to_csv(CSV_FILE, index=False)
+            return df
+        except pd.errors.EmptyDataError:
+            st.error("❌ Файл пуст или повреждён. Создан новый файл.")
+            df = pd.DataFrame(columns=COLUMNS)
+            df.to_csv(CSV_FILE, index=False)
+            return df
         except Exception as e:
-            st.error(f"❌ Ошибка загрузки данных: {e}. Создан новый файл.")
+            st.error(f"❌ Ошибка при загрузке данных: {e}. Создан новый файл.")
             df = pd.DataFrame(columns=COLUMNS)
             df.to_csv(CSV_FILE, index=False)
             return df
@@ -48,32 +61,6 @@ def add_data(df, values):
     }
     df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
     return df
-
-# --- Функция для отображения таблицы с возможностью выбора строки ---
-def show_selectable_table(df, key="table"):
-    gb = GridOptionsBuilder.from_dataframe(df)
-    gb.configure_selection(selection_mode="single", use_checkbox=False)
-    gb.configure_grid_options(enableCellTextSelection=True)
-    grid_options = gb.build()
-
-    response = AgGrid(
-        df,
-        gridOptions=grid_options,
-        allow_unsafe_jscode=True,
-        theme="alpine",
-        height=300,
-        width='100%',
-        key=key,
-        reload_data=False,
-        update_mode="MODEL_CHANGED"
-    )
-
-    if hasattr(response, "selected_rows") and response.selected_rows is not None:
-        return response.selected_rows
-    elif isinstance(response, dict) and "selectedRows" in response:
-        return response["selectedRows"]
-    else:
-        return []
 
 # --- Интерфейс Streamlit ---
 st.set_page_config(page_title="Мониторинг пользователей", layout="wide")
@@ -152,16 +139,7 @@ if st.session_state.current_page == "Добавить данные":
 
         if not today_df.empty:
             st.subheader("📌 Последние записи за сегодня:")
-            selected_row = show_selectable_table(today_df, key="today_table")
-            if len(selected_row) > 0:
-                if isinstance(selected_row, list):
-                    row_data = selected_row[0]  # Работаем напрямую с dict
-                else:
-                    row_data = selected_row.iloc[0].to_dict()  # Преобразуем Series в словарь
-
-                copied_text = ' | '.join(f"{k}: {v}" for k, v in row_data.items())
-                st.code(copied_text)
-                st.info("✔️ Строка скопирована в буфер обмена!")
+            st.dataframe(today_df.style.highlight_max(axis=0), use_container_width=True)
         else:
             st.info("❌ Сегодня записей ещё нет.")
 
@@ -169,17 +147,7 @@ if st.session_state.current_page == "Добавить данные":
 elif st.session_state.current_page == "История записей":
     st.header("📜 История ввода")
     if not df.empty:
-        st.subheader("📌 Выберите строку для копирования")
-        selected_row = show_selectable_table(df, key="history_table")
-        if len(selected_row) > 0:
-            if isinstance(selected_row, list):
-                row_data = selected_row[0]
-            else:
-                row_data = selected_row.iloc[0].to_dict()
-
-            copied_text = ' | '.join(f"{k}: {v}" for k, v in row_data.items())
-            st.code(copied_text)
-            st.info("✔️ Строка скопирована в буфер обмена!")
+        st.dataframe(df.style.highlight_max(axis=0), use_container_width=True)
     else:
         st.warning("❌ Нет данных для отображения.")
 
@@ -205,16 +173,7 @@ elif st.session_state.current_page == "Поиск":
             results = df[df["Дата"].str.contains(query)]
             if not results.empty:
                 st.write("Результаты:")
-                selected_row = show_selectable_table(results, key="search_table")
-                if len(selected_row) > 0:
-                    if isinstance(selected_row, list):
-                        row_data = selected_row[0]
-                    else:
-                        row_data = selected_row.iloc[0].to_dict()
-
-                    copied_text = ' | '.join(f"{k}: {v}" for k, v in row_data.items())
-                    st.code(copied_text)
-                    st.info("✔️ Строка скопирована в буфер обмена!")
+                st.dataframe(results)
             else:
                 st.warning("❌ Записи не найдены.")
         else:
