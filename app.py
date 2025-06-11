@@ -62,7 +62,6 @@ def show_selectable_table(df, key="table"):
         update_mode="MODEL_CHANGED"
     )
 
-    # Проверяем тип ответа и возвращаем выбранные строки
     if hasattr(response, "selected_rows") and response.selected_rows is not None:
         return response.selected_rows
     elif isinstance(response, dict) and "selectedRows" in response:
@@ -74,10 +73,14 @@ def show_selectable_table(df, key="table"):
 st.set_page_config(page_title="Мониторинг пользователей", layout="wide")
 st.title("📊 Мониторинг пользователей и водителей")
 
-# --- Боковое меню ---
-menu = st.sidebar.selectbox("Выберите действие", ["Добавить данные", "История записей", "Графики", "Поиск"])
+# --- Боковое меню (простые кнопки вместо selectbox) ---
+st.sidebar.title("📌 Навигация")
+show_add = st.sidebar.button("➕ Добавить данные")
+show_history = st.sidebar.button("📜 История записей")
+show_graphs = st.sidebar.button("📈 Графики")
+show_search = st.sidebar.button("🔍 Поиск")
 
-# --- Загрузка текущих данных ---
+# --- Основная логика ---
 df = load_data()
 if not df.empty:
     dates = df["Дата"].tolist()
@@ -86,8 +89,22 @@ else:
     dates = []
     data_tables = [[] for _ in range(6)]
 
+# --- Состояние через session_state ---
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = "Добавить данные"
+
+# --- Обновление текущей страницы ---
+if show_add:
+    st.session_state.current_page = "Добавить данные"
+elif show_history:
+    st.session_state.current_page = "История записей"
+elif show_graphs:
+    st.session_state.current_page = "Графики"
+elif show_search:
+    st.session_state.current_page = "Поиск"
+
 # --- Вкладка: Добавить данные ---
-if menu == "Добавить данные":
+if st.session_state.current_page == "Добавить данные":
     st.header("➕ Добавить новую запись")
 
     with st.form("add_data_form"):
@@ -142,7 +159,7 @@ if menu == "Добавить данные":
             st.info("❌ Сегодня записей ещё нет.")
 
 # --- Вкладка: История записей ---
-elif menu == "История записей":
+elif st.session_state.current_page == "История записей":
     st.header("📜 История ввода")
     if not df.empty:
         st.subheader("📌 Выберите строку для копирования")
@@ -159,7 +176,7 @@ elif menu == "История записей":
         st.warning("❌ Нет данных для отображения.")
 
 # --- Вкладка: Графики ---
-elif menu == "Графики":
+elif st.session_state.current_page == "Графики":
     st.header("📈 Графики по категориям")
     category = st.selectbox("Выберите категорию", COLUMNS[1:])
     if not df.empty:
@@ -172,7 +189,7 @@ elif menu == "Графики":
         st.warning("❌ Нет данных для построения графика.")
 
 # --- Вкладка: Поиск ---
-elif menu == "Поиск":
+elif st.session_state.current_page == "Поиск":
     st.header("🔍 Поиск по дате")
     query = st.text_input("Введите дату (дд.мм.гг)")
     if st.button("Найти"):
