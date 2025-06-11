@@ -19,7 +19,18 @@ COLUMNS = ["Дата"] + [
 # --- Загрузка данных ---
 def load_data():
     if os.path.exists(CSV_FILE):
-        return pd.read_csv(CSV_FILE)
+        try:
+            return pd.read_csv(CSV_FILE, encoding="utf-8-sig", on_bad_lines='skip')  # ✅ Поддержка кириллицы и пропуск ошибок
+        except pd.errors.ParserError as e:
+            st.error(f"❌ Ошибка парсинга CSV: {e}. Создан новый файл.")
+            df = pd.DataFrame(columns=COLUMNS)
+            df.to_csv(CSV_FILE, index=False)
+            return df
+        except Exception as e:
+            st.error(f"❌ Неизвестная ошибка при загрузке данных: {e}")
+            df = pd.DataFrame(columns=COLUMNS)
+            df.to_csv(CSV_FILE, index=False)
+            return df
     else:
         df = pd.DataFrame(columns=COLUMNS)
         df.to_csv(CSV_FILE, index=False)
