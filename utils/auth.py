@@ -2,10 +2,12 @@
 import streamlit as st
 import sqlite3
 import hashlib
+import os
 
 DB_FILE = "../monitoring.db"
 
 def init_user_db():
+    """Инициализация таблицы пользователей."""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("""
@@ -17,7 +19,7 @@ def init_user_db():
     )
     """)
     try:
-        # Тестовый пользователь: admin / password → роль "Технический специалист"
+        # Создание тестового пользователя admin с ролью "Технический специалист"
         hashed_pw = hashlib.sha256("password".encode()).hexdigest()
         cursor.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
                        ("admin", hashed_pw, "Технический специалист"))
@@ -28,6 +30,7 @@ def init_user_db():
         conn.close()
 
 def check_user(username, password):
+    """Проверка имени пользователя и пароля."""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("SELECT password, role FROM users WHERE username=?", (username,))
@@ -38,6 +41,7 @@ def check_user(username, password):
     return None
 
 def login_form():
+    """Форма входа в систему."""
     st.title("🔐 Вход в систему")
 
     username = st.text_input("Имя пользователя", key="login_username")
@@ -54,6 +58,7 @@ def login_form():
             st.error("❌ Неверное имя или пароль")
 
 def register_form():
+    """Форма регистрации нового пользователя."""
     st.subheader("📝 Регистрация")
     
     new_username = st.text_input("Новое имя пользователя", key="register_username")
@@ -65,6 +70,8 @@ def register_form():
             st.error("❗ Заполните все поля")
         elif new_password != confirm_password:
             st.error("❌ Пароли не совпадают")
+        elif len(new_password) < 8:
+            st.error("❗ Пароль должен содержать минимум 8 символов")
         else:
             conn = sqlite3.connect(DB_FILE)
             cursor = conn.cursor()
@@ -79,3 +86,45 @@ def register_form():
                 st.error("❌ Имя пользователя занято")
             finally:
                 conn.close()
+
+def add_admin_with_secret(secret, new_username, new_password):
+    """
+    Добавление нового администратора через секрет.
+    :param secret: Секретный ключ для проверки прав.
+    :param new_username: Имя нового пользователя.
+    :param new_password: Пароль нового пользователя.
+    :return: True если добавлено, иначе False.
+    """
+    if secret != os.getenv("ADMIN_SECRET"):
+        return False
+
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    try:
+        hashed_pw = hashlib.sha256(new_password.encode()).hexdigest()
+        cursor.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
+                       (new_username, hashed_pw, "Технический специалист"))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+def update_user_role(username, new_role):
+    """
+    Изменение роли пользователя.
+    :param username: Имя пользователя.
+    :param new_role: Новая роль (например, "Пользователь" или "Технический специалист").
+    :return: True если изменено, иначе False.
+    """
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("UPDATE users SET role = ? WHERE username = ?", (new_role, username))
+        conn.commit()
+        return True
+    except Exception:
+        return False
+    finally:
+        conn.close()
