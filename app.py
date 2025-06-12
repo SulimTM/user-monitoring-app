@@ -111,37 +111,41 @@ else:
     role = st.session_state.get("role", "Пользователь")
     st.sidebar.title("📌 Навигация")
 
-    # Только для технических специалистов
-    if role == "Технический специалист":
-        show_add_admin = st.sidebar.button("Добавить администратора (секрет)")
-        show_manage_roles = st.sidebar.button("Управление ролями")
-        show_add = st.sidebar.button("➕ Добавить данные")
-    else:
-        show_add = False
-
-    show_history = st.sidebar.button("📜 История записей")
-    show_graphs = st.sidebar.button("📈 Графики")
-    show_search = st.sidebar.button("🔍 Поиск")
-    show_instructions = st.sidebar.button("ℹ️ Инструкции")
-
-    # --- Состояние текущей страницы ---
+    # Состояние текущей страницы
     if 'current_page' not in st.session_state:
         st.session_state.current_page = "История записей"
 
+    # Переменные для кнопок
+    show_add_admin = False
+    show_manage_roles = False
+    show_add = False
+
+    # Кнопки для технического специалиста
+    if role == "Технический специалист":
+        if st.sidebar.button("Добавить администратора (секрет)"):
+            show_add_admin = True
+        if st.sidebar.button("Управление ролями"):
+            show_manage_roles = True
+        if st.sidebar.button("➕ Добавить данные"):
+            show_add = True
+
+    # Общие кнопки
+    if st.sidebar.button("📜 История записей"):
+        st.session_state.current_page = "История записей"
+    if st.sidebar.button("📈 Графики"):
+        st.session_state.current_page = "Графики"
+    if st.sidebar.button("🔍 Поиск"):
+        st.session_state.current_page = "Поиск"
+    if st.sidebar.button("ℹ️ Инструкции"):
+        st.session_state.current_page = "Инструкции"
+
+    # Обновление состояния страницы
     if show_add_admin and role == "Технический специалист":
         st.session_state.current_page = "Добавить администратора"
     elif show_manage_roles and role == "Технический специалист":
         st.session_state.current_page = "Управление ролями"
     elif show_add:
         st.session_state.current_page = "Добавить данные"
-    elif show_history:
-        st.session_state.current_page = "История записей"
-    elif show_graphs:
-        st.session_state.current_page = "Графики"
-    elif show_search:
-        st.session_state.current_page = "Поиск"
-    elif show_instructions:
-        st.session_state.current_page = "Инструкции"
 
     df = load_data()
 
