@@ -5,3 +5,5 @@ gspread
 gspread-dataframe
 oauth2client
 streamlit-autorefresh
+python-dotenv  # Для работы с .env файлами
+bcrypt  # Для более безопасного хэширования паролей (опционально)
