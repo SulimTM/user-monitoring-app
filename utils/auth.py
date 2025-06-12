@@ -1,9 +1,9 @@
 # utils/auth.py
-import streamlit as st
 import sqlite3
 import hashlib
 import os
 
+# Путь к базе данных
 DB_FILE = "../monitoring.db"
 
 def init_user_db():
@@ -20,7 +20,7 @@ def init_user_db():
     """)
     try:
         # Создание тестового пользователя admin с ролью "Технический специалист"
-        hashed_pw = hashlib.sha256("password".encode()).hexdigest()
+        hashed_pw = hashlib.sha256("SecureAdmin2023!".encode()).hexdigest()
         cursor.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
                        ("admin", hashed_pw, "Технический специалист"))
         conn.commit()
@@ -42,6 +42,7 @@ def check_user(username, password):
 
 def login_form():
     """Форма входа в систему."""
+    import streamlit as st
     st.title("🔐 Вход в систему")
 
     username = st.text_input("Имя пользователя", key="login_username")
@@ -59,6 +60,7 @@ def login_form():
 
 def register_form():
     """Форма регистрации нового пользователя."""
+    import streamlit as st
     st.subheader("📝 Регистрация")
     
     new_username = st.text_input("Новое имя пользователя", key="register_username")
