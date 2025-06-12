@@ -1,16 +1,29 @@
 # app.py
-from utils.auth import init_user_db, check_user, login_form, register_form
+from utils.auth import (
+    init_user_db,
+    check_user,
+    login_form,
+    register_form,
+    add_admin_with_secret,
+    update_user_role,
+)
 import streamlit as st
 import sqlite3
 import pandas as pd
 from datetime import datetime
 import matplotlib.pyplot as plt
 from streamlit_autorefresh import st_autorefresh
+import os
+from dotenv import load_dotenv
+
+# Загрузка переменных окружения
+load_dotenv()
 
 # --- Настройка базы данных ---
 DB_FILE = "monitoring.db"
 
 def init_data_db():
+    """Инициализация таблицы для записей."""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute(f"""
@@ -29,6 +42,7 @@ def init_data_db():
     conn.close()
 
 def load_data():
+    """Загрузка данных из базы данных."""
     conn = sqlite3.connect(DB_FILE)
     try:
         df = pd.read_sql_query(
@@ -44,6 +58,7 @@ def load_data():
     return df
 
 def save_data(values):
+    """Сохранение новых данных в базу данных."""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("""
@@ -85,6 +100,7 @@ if "logged_in" not in st.session_state:
         register_form()
 
 else:
+    # Главное меню после авторизации
     st.sidebar.success(f"Добро пожаловать, {st.session_state.username}!")
     if st.sidebar.button("Выйти"):
         del st.session_state["logged_in"]
@@ -92,10 +108,17 @@ else:
         del st.session_state["role"]
         st.rerun()
 
-    # --- Боковое меню (разные кнопки по ролям) ---
     role = st.session_state.get("role", "Пользователь")
     st.sidebar.title("📌 Навигация")
-    show_add = st.sidebar.button("➕ Добавить данные") if role == "Технический специалист" else False
+
+    # Только для технических специалистов
+    if role == "Технический специалист":
+        show_add_admin = st.sidebar.button("Добавить администратора (секрет)")
+        show_manage_roles = st.sidebar.button("Управление ролями")
+        show_add = st.sidebar.button("➕ Добавить данные")
+    else:
+        show_add = False
+
     show_history = st.sidebar.button("📜 История записей")
     show_graphs = st.sidebar.button("📈 Графики")
     show_search = st.sidebar.button("🔍 Поиск")
@@ -105,7 +128,11 @@ else:
     if 'current_page' not in st.session_state:
         st.session_state.current_page = "История записей"
 
-    if show_add:
+    if show_add_admin and role == "Технический специалист":
+        st.session_state.current_page = "Добавить администратора"
+    elif show_manage_roles and role == "Технический специалист":
+        st.session_state.current_page = "Управление ролями"
+    elif show_add:
         st.session_state.current_page = "Добавить данные"
     elif show_history:
         st.session_state.current_page = "История записей"
@@ -118,8 +145,61 @@ else:
 
     df = load_data()
 
-    # --- Вкладка: Добавить данные ---
-    if st.session_state.current_page == "Добавить данные" and role == "Технический специалист":
+    # --- Добавление администратора через секрет ---
+    if st.session_state.current_page == "Добавить администратора":
+        st.subheader("🔑 Добавить нового администратора (требуется секрет)")
+
+        secret = st.text_input("Введите секретный ключ", type="password", key="admin_secret")
+        new_username = st.text_input("Имя пользователя", key="new_admin_username")
+        new_password = st.text_input("Пароль", type="password", key="new_admin_password")
+        confirm_password = st.text_input("Подтвердите пароль", type="password", key="confirm_admin_password")
+
+        if st.button("Добавить администратора"):
+            if secret != os.getenv("ADMIN_SECRET"):
+                st.error("❌ Неверный секретный ключ")
+            elif not new_username or not new_password:
+                st.error("❗ Заполните все поля")
+            elif new_password != confirm_password:
+                st.error("❌ Пароли не совпадают")
+            elif len(new_password) < 8:
+                st.error("❗ Пароль должен содержать минимум 8 символов")
+            else:
+                success = add_admin_with_secret(secret, new_username, new_password)
+                if success:
+                    st.success("✅ Администратор успешно добавлен!")
+                else:
+                    st.error("❌ Ошибка при добавлении администратора.")
+
+    # --- Управление ролями пользователей ---
+    elif st.session_state.current_page == "Управление ролями":
+        st.subheader("👥 Управление ролями пользователей")
+
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT username, role FROM users")
+        users = cursor.fetchall()
+        conn.close()
+
+        if not users:
+            st.info("❌ Пользователи не найдены.")
+        else:
+            usernames = [user[0] for user in users]
+            selected_user = st.selectbox("Выберите пользователя", usernames)
+
+            current_role = next(user[1] for user in users if user[0] == selected_user)
+            st.write(f"Текущая роль: **{current_role}**")
+
+            new_role = st.selectbox("Новая роль", ["Пользователь", "Технический специалист"])
+
+            if st.button("Изменить роль"):
+                success = update_user_role(selected_user, new_role)
+                if success:
+                    st.success(f"✅ Роль пользователя '{selected_user}' изменена на '{new_role}'.")
+                else:
+                    st.error("❌ Ошибка при изменении роли.")
+
+    # --- Добавление данных ---
+    elif st.session_state.current_page == "Добавить данные" and role == "Технический специалист":
         st.header("➕ Добавить новую запись")
 
         with st.form("add_data_form"):
@@ -168,7 +248,7 @@ else:
             else:
                 st.warning("❌ Нет данных или структура повреждена.")
 
-    # --- Вкладка: История записей ---
+    # --- История записей ---
     elif st.session_state.current_page == "История записей":
         st.header("📜 История ввода")
         if not df.empty:
@@ -176,7 +256,7 @@ else:
         else:
             st.warning("❌ Нет данных для отображения.")
 
-    # --- Вкладка: Графики ---
+    # --- Графики ---
     elif st.session_state.current_page == "Графики":
         st.header("📈 Графики по категориям")
         category = st.selectbox("Выберите категорию", COLUMNS[1:])
@@ -189,7 +269,7 @@ else:
         else:
             st.warning("❌ Нет данных для построения графика.")
 
-    # --- Вкладка: Поиск ---
+    # --- Поиск ---
     elif st.session_state.current_page == "Поиск":
         st.header("🔍 Поиск по дате")
         query = st.text_input("Введите дату (дд.мм.гг)")
@@ -204,7 +284,7 @@ else:
             else:
                 st.warning("❗ Введите дату для поиска.")
 
-    # --- Вкладка: Инструкции ---
+    # --- Инструкции ---
     elif st.session_state.current_page == "Инструкции":
         st.header("ℹ️ Инструкции по использованию")
 
