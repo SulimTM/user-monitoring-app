@@ -12,7 +12,8 @@ import sqlite3
 import pandas as pd
 from datetime import datetime
 import matplotlib.pyplot as plt
-from streamlit_autorefresh import st_autorefresh
+# Убираем автообновление, которое может вызывать проблемы с курсором
+# from streamlit_autorefresh import st_autorefresh
 import os
 from dotenv import load_dotenv
 
@@ -68,7 +69,8 @@ def save_data(values):
     conn.commit()
     conn.close()
     st.cache_data.clear()
-    st.rerun()
+    # Убираем st.rerun() чтобы избежать проблем с курсором
+    st.success("✅ Данные успешно сохранены!")
 
 # --- Конфигурация ---
 COLUMNS = ["Дата"] + [
@@ -81,11 +83,20 @@ COLUMNS = ["Дата"] + [
 ]
 
 # --- Streamlit конфигурация ---
-st.set_page_config(page_title="Мониторинг пользователей", layout="wide")
+st.set_page_config(
+    page_title="Мониторинг пользователей", 
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Загружаем CSS для улучшения работы курсора
+with open('style.css') as f:
+    st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+
 st.title("📊 Мониторинг пользователей и водителей")
 
-# --- Автообновление ---
-st_autorefresh(interval=5 * 1000, key="data_refresh")
+# Убираем автообновление
+# st_autorefresh(interval=5 * 1000, key="data_refresh")
 
 # --- Инициализация БД ---
 init_user_db()
@@ -226,13 +237,13 @@ else:
                 )
                 save_data(values)
 
-                # Очистка полей
-                del st.session_state["users_input"]
-                del st.session_state["drivers_input"]
-                del st.session_state["done_input"]
-                del st.session_state["canceled_input"]
-                del st.session_state["not_found_input"]
-                del st.session_state["in_progress_input"]
+                # Очистка полей без st.rerun()
+                st.session_state["users_input"] = 0
+                st.session_state["drivers_input"] = 0
+                st.session_state["done_input"] = 0
+                st.session_state["canceled_input"] = 0
+                st.session_state["not_found_input"] = 0
+                st.session_state["in_progress_input"] = 0
 
         # --- Чекбокс: показать последние записи за день ---
         show_last_records = st.checkbox("📜 Показывать последние записи за день")

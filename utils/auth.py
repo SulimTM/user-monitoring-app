@@ -54,7 +54,9 @@ def login_form():
             st.session_state.logged_in = True
             st.session_state.username = username
             st.session_state.role = role
-            st.rerun()
+            # Убираем st.rerun() чтобы избежать проблем с курсором
+            st.success("✅ Вход выполнен успешно!")
+            st.experimental_rerun()
         else:
             st.error("❌ Неверное имя или пароль")
 
@@ -83,7 +85,8 @@ def register_form():
                                (new_username, hashed_pw, "Пользователь"))  # По умолчанию — обычный пользователь
                 conn.commit()
                 st.success("✅ Регистрация прошла успешно!")
-                st.rerun()
+                # Убираем st.rerun() чтобы избежать проблем с курсором
+                st.experimental_rerun()
             except sqlite3.IntegrityError:
                 st.error("❌ Имя пользователя занято")
             finally:
@@ -99,7 +102,7 @@ def add_admin_with_secret(secret, new_username, new_password):
     """
     if secret != os.getenv("ADMIN_SECRET"):
         return False
-
+    
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     try:
@@ -115,17 +118,17 @@ def add_admin_with_secret(secret, new_username, new_password):
 
 def update_user_role(username, new_role):
     """
-    Изменение роли пользователя.
+    Обновление роли пользователя.
     :param username: Имя пользователя.
-    :param new_role: Новая роль (например, "Пользователь" или "Технический специалист").
-    :return: True если изменено, иначе False.
+    :param new_role: Новая роль.
+    :return: True если обновлено, иначе False.
     """
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     try:
         cursor.execute("UPDATE users SET role = ? WHERE username = ?", (new_role, username))
         conn.commit()
-        return True
+        return cursor.rowcount > 0
     except Exception:
         return False
     finally:

@@ -4,6 +4,6 @@ matplotlib
 gspread
 gspread-dataframe
 oauth2client
-streamlit-autorefresh
+# streamlit-autorefresh  # Убрано из-за проблем с курсором
 python-dotenv  # Для работы с .env файлами
 bcrypt  # Для более безопасного хэширования паролей (опционально)
