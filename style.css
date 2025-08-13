@@ -1,0 +1,65 @@
+/* Улучшения для работы курсора в Streamlit */
+
+/* Основные элементы ввода */
+.stTextInput > div > div > input,
+.stNumberInput > div > div > input,
+.stTextArea > div > div > textarea {
+    cursor: text !important;
+    transition: border-color 0.2s ease;
+}
+
+/* Селекты и дропдауны */
+.stSelectbox > div > div > select,
+.stMultiselect > div > div > div {
+    cursor: pointer !important;
+}
+
+/* Кнопки */
+.stButton > button,
+.stDownloadButton > button {
+    cursor: pointer !important;
+    transition: all 0.2s ease;
+}
+
+/* Чекбоксы и радиокнопки */
+.stCheckbox > div > div > label,
+.stRadio > div > div > label {
+    cursor: pointer !important;
+}
+
+/* Ссылки */
+a {
+    cursor: pointer !important;
+}
+
+/* Таблицы */
+.stDataFrame {
+    cursor: default !important;
+}
+
+/* Убираем мерцание при обновлении */
+.stApp {
+    transition: none !important;
+}
+
+/* Улучшаем фокус для элементов */
+.stTextInput > div > div > input:focus,
+.stNumberInput > div > div > input:focus,
+.stTextArea > div > div > textarea:focus {
+    border-color: #ff4b4b !important;
+    box-shadow: 0 0 0 2px rgba(255, 75, 75, 0.2) !important;
+}
+
+/* Убираем задержки при наведении */
+.stButton > button:hover,
+.stDownloadButton > button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Улучшаем доступность */
+.stTextInput > div > div > input:disabled,
+.stNumberInput > div > div > input:disabled {
+    cursor: not-allowed !important;
+    opacity: 0.6;
+}
